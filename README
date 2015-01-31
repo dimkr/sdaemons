@@ -15,7 +15,7 @@ Features
  - init, an init daemon
  - poweroff and reboot
  - daemon, a generic daemonization tool
- - syslog and klog, logging daemons
+ - syslog, a logging daemon
 
 Credits and Legal Information
 =============================

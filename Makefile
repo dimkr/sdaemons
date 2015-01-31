@@ -16,6 +16,12 @@ PROGS = $(SRCS:.c=)
 
 all: $(PROGS)
 
+syslog.o: syslog.c
+	$(CC) -c -o $@ $< -pthread $(CFLAGS)
+
+syslog: syslog.o
+	$(CC) -o $@ $^ -pthread $(LDFLAGS)
+
 %.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS)
 

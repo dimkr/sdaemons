@@ -9,6 +9,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/klog.h>
+#include <pthread.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #define MAX_MSG_LEN (1024)
 
@@ -18,13 +22,108 @@
 
 #define USAGE "Usage: %s\n"
 
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+static bool log_write(const int fd, char *buf, ssize_t len)
+{
+	ssize_t out;
+	bool ret = false;
+
+	if (0 != pthread_mutex_lock(&lock))
+		goto end;
+
+	/* make sure the message ends with a line break */
+	if ('\n' != buf[len - 1]) {
+		buf[len] = '\n';
+		buf[1 + len] = '\0';
+		++len;
+	}
+
+	do {
+		out = write(fd, buf, (size_t) len);
+		if (-1 == out)
+			goto unlock;
+		len -= out;
+	} while (0 < len);
+
+	ret = true;
+
+unlock:
+	(void) pthread_mutex_unlock(&lock);
+
+end:
+	return ret;
+}
+
+static void close_klog(void *arg)
+{
+	(void) klogctl(7, NULL, 0);
+	(void) klogctl(0, NULL, 0);
+}
+
+static void *klog_routine(void *arg)
+{
+	char buf[MAX_MSG_LEN];
+	int len;
+	int fd = (int) (intptr_t) arg;
+
+	/* make the thread termination immediate, since klogctl() may block */
+	if (0 != pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL))
+		goto end;
+
+	/* open the kernel log and disable echo of messages to the console - do not
+	 * allow termination of the thread until a cleanup handler is assigned */
+	if (0 != pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL))
+		goto end;
+
+	if (-1 == klogctl(1, NULL, 0))
+		goto end;
+
+	if (-1 == klogctl(6, NULL, 0))
+		goto close_klog;
+
+	pthread_cleanup_push(close_klog, NULL);
+
+	if (0 != pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL))
+		goto close_klog;
+
+	do {
+		len = klogctl(2, buf, sizeof(buf));
+		switch (len) {
+			case (-1):
+				goto close_klog;
+
+			case 0:
+				continue;
+
+			default:
+				/* do not allow termination of the thread during log_write(), to
+				 * prevent truncation of log messages */
+				if (0 != pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL))
+					goto close_klog;
+
+				if (false == log_write(fd, buf, (ssize_t) len))
+					goto close_klog;
+
+				if (0 != pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL))
+					goto close_klog;
+		}
+	} while (1);
+
+close_klog:
+	pthread_cleanup_pop(1);
+
+end:
+	pthread_exit(NULL);
+}
+
 int main(int argc, char *argv[])
 {
 	char buf[MAX_MSG_LEN];
 	struct sockaddr_un addr;
+	pthread_t klog;
 	sigset_t mask;
 	ssize_t len;
-	ssize_t out;
 	int log_fd;
 	int sock;
 	int sig;
@@ -76,6 +175,12 @@ int main(int argc, char *argv[])
 	if (-1 == fcntl(sock, F_SETOWN, getpid()))
 		goto close_sock;
 
+	if (0 != pthread_create(&klog,
+	                        NULL,
+	                        klog_routine,
+	                        (void *) (intptr_t) log_fd))
+		goto close_sock;
+
 	do {
 		if (0 != sigwait(&mask, &sig))
 			break;
@@ -89,7 +194,7 @@ int main(int argc, char *argv[])
 		switch (len) {
 			case (-1):
 				if (EAGAIN != errno)
-					goto close_sock;
+					goto stop_klog;
 
 				/* fall through */
 
@@ -97,20 +202,13 @@ int main(int argc, char *argv[])
 				continue;
 		}
 
-		/* make sure the message ends with a line break */
-		if ('\n' != buf[len - 1]) {
-			buf[len] = '\n';
-			buf[1 + len] = '\0';
-			++len;
-		}
-
-		do {
-			out = write(log_fd, buf, (size_t) len);
-			if (-1 == out)
-				break;
-			len -= out;
-		} while (0 < len);
+		if (false == log_write(log_fd, buf, len))
+			break;
 	} while (1);
+
+stop_klog:
+	(void) pthread_cancel(klog);
+	(void) pthread_join(klog, NULL);
 
 close_sock:
 	(void) close(sock);
