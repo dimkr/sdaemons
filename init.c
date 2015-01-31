@@ -8,10 +8,11 @@
 #include <fcntl.h>
 #include <stdio.h>
 
-#define USAGE "Usage: %s ARG...\n"
+#define USAGE "Usage: %s\n"
 #define CHILD_CTTY "/dev/tty0"
+#define CHILD_CMD "rc"
 
-pid_t start_child(char *argv[])
+pid_t start_child(void)
 {
 	sigset_t mask;
 	pid_t pid;
@@ -40,7 +41,7 @@ pid_t start_child(char *argv[])
 	if (STDERR_FILENO != dup2(STDOUT_FILENO, STDERR_FILENO))
 		goto terminate;
 
-	(void) execvp(argv[0], argv);
+	(void) execlp(CHILD_CMD, CHILD_CMD, (char *) NULL);
 
 terminate:
 	exit(EXIT_FAILURE);
@@ -56,7 +57,7 @@ int main(int argc, char *argv[])
 	pid_t child;
 	int ret;
 
-	if (1 >= argc) {
+	if (1 != argc) {
 		(void) fprintf(stderr, USAGE, argv[0]);
 		goto end;
 	}
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
 
 	sig.si_signo = SIGUSR2;
 
-	child = start_child(&argv[1]);
+	child = start_child();
 	if (-1 == child)
 		goto shutdown;
 
