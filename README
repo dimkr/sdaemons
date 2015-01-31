@@ -1,0 +1,27 @@
+         _
+ ___  __| | __ _  ___ _ __ ___   ___  _ __  ___
+/ __|/ _` |/ _` |/ _ \ '_ ` _ \ / _ \| '_ \/ __|
+\__ \ (_| | (_| |  __/ | | | | | (_) | | | \__ \
+|___/\__,_|\__,_|\___|_| |_| |_|\___/|_| |_|___/
+
+Overview
+========
+
+sdaemons is a set of barebones daemons for Linux (http://www.kernel.org/).
+
+Features
+========
+
+ - init, an init daemon
+ - poweroff and reboot
+ - daemon, a generic daemonization tool
+ - syslog and klog, logging daemons
+
+Credits and Legal Information
+=============================
+
+sdaemons is free and unencumbered software released under the terms of
+the MIT license; see COPYING for the license text. For a list of its authors and
+contributors, see AUTHORS.
+
+The ASCII art logo at the top was made using FIGlet (http://www.figlet.org/).
