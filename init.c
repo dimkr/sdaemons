@@ -7,9 +7,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <sys/mount.h>
+#include <sys/ioctl.h>
+#include <paths.h>
+#include <errno.h>
 
 #define USAGE "Usage: %s\n"
-#define CHILD_CTTY "/dev/tty0"
+#define CHILD_CTTY _PATH_DEV"tty0"
 #define CHILD_CMD "rc"
 
 pid_t start_child(void)
@@ -41,6 +45,10 @@ pid_t start_child(void)
 	if (STDERR_FILENO != dup2(STDOUT_FILENO, STDERR_FILENO))
 		goto terminate;
 
+	/* assign a controlling TTY */
+	if (-1 == ioctl(STDIN_FILENO, TIOCSCTTY, 1))
+		goto terminate;
+
 	(void) execlp(CHILD_CMD, CHILD_CMD, (char *) NULL);
 
 terminate:
@@ -60,6 +68,13 @@ int main(int argc, char *argv[])
 	if (1 != argc) {
 		(void) fprintf(stderr, USAGE, argv[0]);
 		goto end;
+	}
+
+	/* mount a devtmpfs file system at /dev, to make the controlling TTY device
+	 * node accessible */
+	if (-1 == mount("dev", _PATH_DEV, "devtmpfs", 0UL, NULL)) {
+		if (EBUSY != errno)
+			goto end;
 	}
 
 	/* block SIGCHLD, SIGUSR1 (poweroff) and SIGUSR2 (reboot) */
