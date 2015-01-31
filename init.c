@@ -102,7 +102,8 @@ int main(int argc, char *argv[])
 		if (SIGCHLD != sig.si_signo)
 			break;
 
-		(void) waitpid(sig.si_pid, NULL, WNOHANG);
+		if (sig.si_pid != waitpid(sig.si_pid, NULL, WNOHANG))
+			break;
 
 		/* stop the loop when the child process terminates */
 		if (child == sig.si_pid)
