@@ -38,6 +38,6 @@ install: $(PROGS)
 		install -D -m 644 $$prog.8 $(DESTDIR)$(MAN_DIR)/man8/$$prog.8; \
 	done
 	install -d -m 755 $(DESTDIR)/run
-	install -D -m 644 README $(DESTDIR)$(DOC_DIR)/README
-	install -m 644 AUTHORS $(DESTDIR)$(DOC_DIR)/AUTHORS
-	install -m 644 COPYING $(DESTDIR)$(DOC_DIR)/COPYING
+	install -D -m 644 README $(DESTDIR)$(DOC_DIR)/sdaemons/README
+	install -m 644 AUTHORS $(DESTDIR)$(DOC_DIR)/sdaemons/AUTHORS
+	install -m 644 COPYING $(DESTDIR)$(DOC_DIR)/sdaemons/COPYING
