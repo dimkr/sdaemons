@@ -13,6 +13,7 @@ Features
 ========
 
  - init, an init daemon
+ - newpid, an init process for PID namespaces
  - poweroff and reboot
  - daemon, a generic daemonization tool
  - syslog, a logging daemon
