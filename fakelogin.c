@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 	if (-1 == chdir(user->pw_dir))
 		goto end;
 
-	(void) execlp(user->pw_shell, user->pw_shell, (char *) NULL);
+	(void) execlp(user->pw_shell, user->pw_shell, "-l", (char *) NULL);
 
 end:
 	return EXIT_FAILURE;
