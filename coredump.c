@@ -33,6 +33,7 @@
 #include <syslog.h>
 
 #define USAGE "Usage: %s NAME\n"
+#define PATH_RUN "/run"
 
 int main(int argc, char *argv[])
 {
@@ -49,7 +50,7 @@ int main(int argc, char *argv[])
 	if (NULL != strchr(argv[1], '/'))
 		goto usage;
 
-	out = snprintf(path, sizeof(path), "/run/crash/%s", argv[1]);
+	out = snprintf(path, sizeof(path), PATH_RUN"/crash/%s", argv[1]);
 	if ((0 >= out) || (sizeof(path) <= out))
 		goto end;
 
