@@ -59,12 +59,9 @@ pid_t start_child(void)
 
 	if (-1 == close(STDIN_FILENO))
 		goto terminate;
-	if (-1 == open(CHILD_CTTY, O_RDONLY))
+	if (-1 == open(CHILD_CTTY, O_RDWR))
 		goto terminate;
-
-	if (-1 == close(STDOUT_FILENO))
-		goto terminate;
-	if (-1 == open(CHILD_CTTY, O_WRONLY))
+	if (STDOUT_FILENO != dup2(STDIN_FILENO, STDOUT_FILENO))
 		goto terminate;
 	if (STDERR_FILENO != dup2(STDOUT_FILENO, STDERR_FILENO))
 		goto terminate;
