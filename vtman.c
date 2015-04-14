@@ -88,7 +88,7 @@ static bool restart_child(const long nvts, const pid_t pid)
 {
 	long i;
 
-	for (i = 0; nvts > i; --i) {
+	for (i = 0; nvts > i; ++i) {
 		if (pid != chlds[i].pid)
 			continue;
 
