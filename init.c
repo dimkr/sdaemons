@@ -28,19 +28,15 @@
 #include <unistd.h>
 #include <sys/reboot.h>
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <sys/mount.h>
-#include <sys/ioctl.h>
 #include <paths.h>
 #include <errno.h>
 
 #define USAGE "Usage: %s\n"
-#define CHILD_CTTY _PATH_DEV"tty0"
 #define CHILD_CMD "rc"
 
-pid_t start_child(void)
+static pid_t start_child(void)
 {
 	sigset_t mask;
 	pid_t pid;
@@ -52,22 +48,6 @@ pid_t start_child(void)
 	if (-1 == sigfillset(&mask))
 		goto terminate;
 	if (-1 == sigprocmask(SIG_UNBLOCK, &mask, NULL))
-		goto terminate;
-
-	if (((pid_t) -1) == setsid())
-		goto terminate;
-
-	if (-1 == close(STDIN_FILENO))
-		goto terminate;
-	if (-1 == open(CHILD_CTTY, O_RDWR))
-		goto terminate;
-	if (STDOUT_FILENO != dup2(STDIN_FILENO, STDOUT_FILENO))
-		goto terminate;
-	if (STDERR_FILENO != dup2(STDOUT_FILENO, STDERR_FILENO))
-		goto terminate;
-
-	/* assign a controlling TTY */
-	if (-1 == ioctl(STDIN_FILENO, TIOCSCTTY, 1))
 		goto terminate;
 
 	(void) execlp(CHILD_CMD, CHILD_CMD, (char *) NULL);

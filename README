@@ -13,10 +13,13 @@ Features
 ========
 
  - init, an init daemon
+ - vtman, a virtual terminal manager
  - newpid, an init process for PID namespaces
  - poweroff and reboot
  - daemon, a generic daemonization tool
  - syslog, a logging daemon
+ - coredump, a coredump handler
+ - fakelogin, an automatic login utility
 
 Credits and Legal Information
 =============================
