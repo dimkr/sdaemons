@@ -42,15 +42,20 @@
  *   - the command-line provided by the user, which runs inside the container
  */
 
-#define USAGE "Usage: %s ARG...\n"
+#define USAGE "Usage: %s [-n] ARG...\n"
 
 static unsigned char stack[8 * 1024];
+
+struct init_arg {
+	char **argv;
+	int flags;
+};
 
 static int routine(void *arg)
 {
 	siginfo_t sig;
 	sigset_t mask;
-	char **argv = (char **) arg;
+	const struct init_arg *data = (const struct init_arg *) arg;
 	pid_t pid;
 	int ret = EXIT_FAILURE;
 
@@ -66,8 +71,10 @@ static int routine(void *arg)
 		goto end;
 
 	/* mount /proc, so it shows only processes that belong to the namespace */
-	if (-1 == mount("proc", "/proc", "proc", 0UL, NULL))
-		goto end;
+	if (0 != (CLONE_NEWPID & data->flags)) {
+		if (-1 == mount("proc", "/proc", "proc", 0UL, NULL))
+			goto end;
+	}
 
 	pid = fork();
 	switch (pid) {
@@ -77,7 +84,7 @@ static int routine(void *arg)
 			if (-1 == sigprocmask(SIG_SETMASK, &mask, NULL))
 				goto terminate;
 
-			(void) execvp(argv[0], argv);
+			(void) execvp(data->argv[0], data->argv);
 
 terminate:
 			exit(EXIT_FAILURE);
@@ -112,21 +119,33 @@ end:
 
 int main(int argc, char *argv[])
 {
+	struct init_arg data;
 	pid_t pid;
 	int status;
 	int sig;
 
-	if (1 >= argc) {
-		(void) fprintf(stderr, USAGE, argv[0]);
-		return EXIT_FAILURE;
+	if (1 >= argc)
+		goto usage;
+
+	if ('-' != argv[1][0]) {
+		data.flags = CLONE_NEWPID | CLONE_NEWNS | SIGCHLD;
+		data.argv = (void *) &argv[1];
+	}
+	else {
+		if (2 >= argc)
+			goto usage;
+		if (('n' != argv[1][1]) || ('\0' != argv[1][2]))
+			goto usage;
+		data.flags = SIGCHLD;
+		data.argv = (void *) &argv[2];
 	}
 
 	/* for extra portability (i.e architectures where the stack grows in both
 	 * directions), we point at the stack middle */
 	pid = clone(routine,
 	            stack + (sizeof(stack) / 2),
-	            CLONE_NEWPID | CLONE_NEWNS | SIGCHLD,
-	            (void *) &argv[1]);
+	            data.flags,
+	            &data);
 	if (-1 == pid)
 		return EXIT_FAILURE;
 
@@ -146,4 +165,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 
 	return EXIT_SUCCESS;
+
+usage:
+	(void) fprintf(stderr, USAGE, argv[0]);
+	return EXIT_FAILURE;
 }

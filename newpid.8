@@ -4,11 +4,12 @@
 \- starts a container
 .SH SYNOPSIS
 .B newpid
-ARG...
+[-n] ARG...
 .SH DESCRIPTION
-Runs a process in new PID and mount namespaces and passes signals to the
-.B init(8)
-process.
+Runs a process in new PID and mount namespaces.
+.TP
+.B -n
+Disables the creation of a PID namespace.
 .SH "SEE ALSO"
 .B init(8)
 .SH AUTHOR
