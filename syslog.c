@@ -42,19 +42,15 @@
 
 #define PATH_DEVLOG "/dev/log"
 
-#define PATH_SYSLOG "/var/log/messages"
+#define PATH_SYSLOG "/var/log/syslog"
+
+#define PATH_KLOG "/var/log/kern.log"
 
 #define USAGE "Usage: %s\n"
-
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 static bool log_write(const int fd, char *buf, ssize_t len)
 {
 	ssize_t out;
-	bool ret = false;
-
-	if (0 != pthread_mutex_lock(&lock))
-		goto end;
 
 	/* make sure the message ends with a line break */
 	if ('\n' != buf[len - 1]) {
@@ -66,17 +62,11 @@ static bool log_write(const int fd, char *buf, ssize_t len)
 	do {
 		out = write(fd, buf, (size_t) len);
 		if (-1 == out)
-			goto unlock;
+			return false;
 		len -= out;
 	} while (0 < len);
 
-	ret = true;
-
-unlock:
-	(void) pthread_mutex_unlock(&lock);
-
-end:
-	return ret;
+	return true;
 }
 
 static void close_klog(void *arg)
@@ -148,7 +138,8 @@ int main(int argc, char *argv[])
 	pthread_t klog;
 	sigset_t mask;
 	ssize_t len;
-	int log_fd;
+	int syslog_fd;
+	int klog_fd;
 	int sock;
 	int sig;
 	int io_sig;
@@ -171,15 +162,21 @@ int main(int argc, char *argv[])
 	if (-1 == sigprocmask(SIG_SETMASK, &mask, NULL))
 		goto end;
 
-	log_fd = open(PATH_SYSLOG,
-	              O_WRONLY | O_APPEND | O_CREAT,
-	              S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	if (-1 == log_fd)
+	syslog_fd = open(PATH_SYSLOG,
+	                 O_WRONLY | O_APPEND | O_CREAT,
+	                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (-1 == syslog_fd)
 		goto end;
+
+	klog_fd = open(PATH_KLOG,
+	               O_WRONLY | O_APPEND | O_CREAT,
+	               S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (-1 == klog_fd)
+		goto close_syslog;
 
 	sock = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (-1 == sock)
-		goto close_log;
+		goto close_klog;
 
 	addr.sun_family = AF_UNIX;
 	(void) strcpy(addr.sun_path, PATH_DEVLOG);
@@ -189,7 +186,7 @@ int main(int argc, char *argv[])
 		goto close_sock;
 
 	if (-1 == fcntl(sock, F_SETSIG, io_sig))
- 		goto close_sock;
+		goto close_sock;
 
 	flags = fcntl(sock, F_GETFL);
 	if (-1 == flags)
@@ -202,7 +199,7 @@ int main(int argc, char *argv[])
 	if (0 != pthread_create(&klog,
 	                        NULL,
 	                        klog_routine,
-	                        (void *) (intptr_t) log_fd))
+	                        (void *) (intptr_t) klog_fd))
 		goto close_sock;
 
 	do {
@@ -226,7 +223,7 @@ int main(int argc, char *argv[])
 				continue;
 		}
 
-		if (false == log_write(log_fd, buf, len))
+		if (false == log_write(syslog_fd, buf, len))
 			break;
 	} while (1);
 
@@ -238,8 +235,11 @@ close_sock:
 	(void) close(sock);
 	(void) unlink(PATH_DEVLOG);
 
-close_log:
-	(void) close(log_fd);
+close_klog:
+	(void) close(klog_fd);
+
+close_syslog:
+	(void) close(syslog_fd);
 
 end:
 	return exit_code;
