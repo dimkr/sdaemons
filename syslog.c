@@ -164,13 +164,11 @@ int main(int argc, char *argv[])
 
 	syslog_fd = open(PATH_SYSLOG,
 	                 O_WRONLY | O_APPEND | O_CREAT,
-	                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	                 S_IRUSR | S_IWUSR);
 	if (-1 == syslog_fd)
 		goto end;
 
-	klog_fd = open(PATH_KLOG,
-	               O_WRONLY | O_APPEND | O_CREAT,
-	               S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	klog_fd = open(PATH_KLOG, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
 	if (-1 == klog_fd)
 		goto close_syslog;
 
