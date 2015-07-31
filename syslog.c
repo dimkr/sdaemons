@@ -38,6 +38,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef HAVE_WAIVE
+#	include <waive.h>
+#endif
+
 #define MAX_MSG_LEN (1024)
 
 #define PATH_DEVLOG "/dev/log"
@@ -199,6 +203,11 @@ int main(int argc, char *argv[])
 	                        klog_routine,
 	                        (void *) (intptr_t) klog_fd))
 		goto close_sock;
+
+#ifdef HAVE_WAIVE
+	if (-1 == waive(WAIVE_INET | WAIVE_PACKET | WAIVE_CLONE | WAIVE_EXEC))
+		goto close_sock;
+#endif
 
 	do {
 		if (0 != sigwait(&mask, &sig))

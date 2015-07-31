@@ -2,6 +2,7 @@ CC ?= cc
 CFLAGS ?= -O2
 LDFLAGS ?=
 DESTDIR ?= /
+HAVE_WAIVE ?= 0
 
 PREFIX ?=
 BIN_DIR ?= $(PREFIX)/bin
@@ -9,6 +10,14 @@ MAN_DIR ?= $(PREFIX)/man
 DOC_DIR ?= $(PREFIX)/doc
 
 CFLAGS += -Wall -pedantic -D_GNU_SOURCE
+ifeq (0,$(HAVE_WAIVE))
+	LIBWAIVE_CFLAGS =
+	LIBWAIVE_LIBS =
+else
+	CFLAGS += -DHAVE_WAIVE
+	LIBWAIVE_CFLAGS = $(shell pkg-config --cflags libwaive)
+	LIBWAIVE_LIBS = $(shell pkg-config --libs libwaive)
+endif
 
 SRCS = $(wildcard *.c)
 OBJECTS = $(SRCS:.c=.o)
@@ -17,10 +26,10 @@ PROGS = $(SRCS:.c=)
 all: $(PROGS)
 
 syslog.o: syslog.c
-	$(CC) -c -o $@ $< -pthread $(CFLAGS)
+	$(CC) -c -o $@ $< -pthread $(CFLAGS) $(LIBWAIVE_CFLAGS)
 
 syslog: syslog.o
-	$(CC) -o $@ $^ -pthread $(LDFLAGS)
+	$(CC) -o $@ $^ -pthread $(LDFLAGS) $(LIBWAIVE_LIBS)
 
 %.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS)
