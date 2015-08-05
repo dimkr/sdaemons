@@ -205,7 +205,12 @@ int main(int argc, char *argv[])
 		goto close_sock;
 
 #ifdef HAVE_WAIVE
-	if (-1 == waive(WAIVE_INET | WAIVE_PACKET | WAIVE_CLONE | WAIVE_EXEC))
+	if (-1 == waive(WAIVE_UN |
+	                WAIVE_INET |
+	                WAIVE_PACKET |
+	                WAIVE_CLONE |
+	                WAIVE_EXEC |
+	                WAIVE_PIPE))
 		goto close_sock;
 #endif
 
